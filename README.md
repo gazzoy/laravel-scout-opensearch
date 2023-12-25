@@ -3,10 +3,10 @@
 <p align="center">
 <a href="https://github.com/zingimmick/laravel-scout-opensearch/actions"><img src="https://github.com/zingimmick/laravel-scout-opensearch/actions/workflows/tests.yml/badge.svg" alt="Build Status"></a>
 <a href="https://codecov.io/gh/zingimmick/laravel-scout-opensearch"><img src="https://codecov.io/gh/zingimmick/laravel-scout-opensearch/branch/3.x/graph/badge.svg" alt="Code Coverage" /></a>
-<a href="https://packagist.org/packages/zing/laravel-scout-opensearch"><img src="https://poser.pugx.org/zing/laravel-scout-opensearch/v/stable.svg" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/zing/laravel-scout-opensearch"><img src="https://poser.pugx.org/zing/laravel-scout-opensearch/downloads" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/zing/laravel-scout-opensearch"><img src="https://poser.pugx.org/zing/laravel-scout-opensearch/v/unstable.svg" alt="Latest Unstable Version"></a>
-<a href="https://packagist.org/packages/zing/laravel-scout-opensearch"><img src="https://poser.pugx.org/zing/laravel-scout-opensearch/license" alt="License"></a>
+<a href="https://packagist.org/packages/gazzoy/laravel-scout-opensearch"><img src="https://poser.pugx.org/gazzoy/laravel-scout-opensearch/v/stable.svg" alt="Latest Stable Version"></a>
+<a href="https://packagist.org/packages/gazzoy/laravel-scout-opensearch"><img src="https://poser.pugx.org/gazzoy/laravel-scout-opensearch/downloads" alt="Total Downloads"></a>
+<a href="https://packagist.org/packages/gazzoy/laravel-scout-opensearch"><img src="https://poser.pugx.org/gazzoy/laravel-scout-opensearch/v/unstable.svg" alt="Latest Unstable Version"></a>
+<a href="https://packagist.org/packages/gazzoy/laravel-scout-opensearch"><img src="https://poser.pugx.org/gazzoy/laravel-scout-opensearch/license" alt="License"></a>
 </p>
 
 > **Requires [PHP 8.0+](https://php.net/releases/)**
@@ -14,7 +14,7 @@
 Require Laravel Scout OpenSearch using [Composer](https://getcomposer.org):
 
 ```bash
-composer require zing/laravel-scout-opensearch
+composer require gazzoy/laravel-scout-opensearch
 ```
 
 ## Configuration
