@@ -23,9 +23,11 @@ composer require gazzoy/laravel-scout-opensearch
 return [
     // ...
     'opensearch' => [
-        'hosts' => [env('OPENSEARCH_HOST', 'localhost:9200')],
-        'basicAuthentication' => [env('OPENSEARCH_USERNAME', 'admin'), env('OPENSEARCH_PASSWORD', 'admin')],
-        'retries' => env('OPENSEARCH_RETRYS', 2),
+        'client' => [
+            'hosts' => [env('OPENSEARCH_HOST', 'localhost:9200')],
+            'basicAuthentication' => [env('OPENSEARCH_USERNAME', 'admin'), env('OPENSEARCH_PASSWORD', 'admin')],
+            'retries' => env('OPENSEARCH_RETRYS', 2),
+        ]
     ],
 ];
 ```
@@ -56,19 +58,40 @@ class SearchableModel extends Model
 
 ### Configuration for Amazon OpenSearch Service
 
+Use `indices` param if you want to turn on index mappings.
+
 ```php
 return [
     // ...
     'opensearch' => [
-        'hosts' => [env('OPENSEARCH_HOST', 'localhost:9200')],
-        'basicAuthentication' => [env('OPENSEARCH_USERNAME', 'admin'), env('OPENSEARCH_PASSWORD', 'admin')],
-        'retries' => env('OPENSEARCH_RETRYS', 2),
-        'sigV4Region' => env('OPENSEARCH_REGION', 'us-east-1') ,
-        'sigV4Service' => env('OPENSEARCH_SERVICE', 'es') ,
-        'sigV4CredentialProvider' => [
-            'key' => env('OPENSEARCH_IAM_KEY'),
-            'secret' => env('OPENSEARCH_IAM_SECRET'),
+        'client' => [
+            'hosts' => [env('OPENSEARCH_HOST', 'localhost:9200')],
+            'basicAuthentication' => [env('OPENSEARCH_USERNAME', 'admin'), env('OPENSEARCH_PASSWORD', 'admin')],
+            'retries' => env('OPENSEARCH_RETRYS', 2),
+            'sigV4Region' => env('OPENSEARCH_REGION', 'us-east-1') ,
+            'sigV4Service' => env('OPENSEARCH_SERVICE', 'es') ,
+            'sigV4CredentialProvider' => [
+                'key' => env('OPENSEARCH_IAM_KEY'),
+                'secret' => env('OPENSEARCH_IAM_SECRET'),
+            ],
         ],
+//    'indices' => [
+//        'default' => [
+//            'settings' => [
+//                'index' => [
+//                    'number_of_shards' => 3,
+//                ],
+//            ],
+//        ],
+//        'table' => [
+//            'mappings' => [
+//                'properties' => [
+//                    'id' => [
+//                        'type' => 'keyword',
+//                    ],
+//                ],
+//            ],
+//        ],
     ],
 ];
 ```
@@ -79,11 +102,13 @@ return [
 return [
     // ...
     'opensearch' => [
-        'hosts' => [env('OPENSEARCH_HOST', 'localhost:9200')],
-        'basicAuthentication' => [env('OPENSEARCH_USERNAME', 'admin'), env('OPENSEARCH_PASSWORD', 'admin')],
-        'retries' => env('OPENSEARCH_RETRYS', 2),
-        'logger' => (new \Monolog\Logger('opensearch'))->pushHandler(new \Monolog\Handler\RotatingFileHandler('opensearch.log')),
-        'tracer' => (new \Monolog\Logger('opensearch'))->pushHandler(new \Monolog\Handler\RotatingFileHandler('opensearch.log')),
+        'client' => [
+            'hosts' => [env('OPENSEARCH_HOST', 'localhost:9200')],
+            'basicAuthentication' => [env('OPENSEARCH_USERNAME', 'admin'), env('OPENSEARCH_PASSWORD', 'admin')],
+            'retries' => env('OPENSEARCH_RETRYS', 2),
+            'logger' => (new \Monolog\Logger('opensearch'))->pushHandler(new \Monolog\Handler\RotatingFileHandler('opensearch.log')),
+            'tracer' => (new \Monolog\Logger('opensearch'))->pushHandler(new \Monolog\Handler\RotatingFileHandler('opensearch.log')),
+        ]
     ],
 ];
 ```
