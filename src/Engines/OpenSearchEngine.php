@@ -415,9 +415,6 @@ class OpenSearchEngine extends Engine
                 }
             }
         }
-
-        // end if
-
         // end if
 
         if (\count($builder->whereIns) > 0) {
