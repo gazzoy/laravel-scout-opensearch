@@ -6,6 +6,7 @@ namespace Zing\LaravelScout\OpenSearch\Engines;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\LazyCollection;
 use Laravel\Scout\Builder;
@@ -112,9 +113,29 @@ class OpenSearchEngine extends Engine
      */
     public function search(Builder $builder): mixed
     {
-        return $this->performSearch($builder, array_filter([
-            'size' => $builder->limit,
-        ]));
+        $options = $this->getOptions($builder, [
+            '_source' => true,
+            'size' => $builder->limit ?: 10000,
+            'from' => 0,
+        ]);
+        $options['query'] = $this->filters($builder);
+
+        return $this->performSearch($builder, $options);
+    }
+
+    public function searchAsDistinct(Builder $builder): Collection
+    {
+        $results = $this->search($builder);
+
+        // @phpstan-ignore-next-line
+        if (Arr::has($results, sprintf('aggregations.%s.buckets', $builder->distinctField))) {
+            // @phpstan-ignore-next-line
+            return collect(Arr::get($results, sprintf('aggregations.%s.buckets', $builder->distinctField)))->pluck(
+                'key'
+            );
+        }
+
+        return collect();
     }
 
     /**
@@ -125,10 +146,12 @@ class OpenSearchEngine extends Engine
      */
     public function paginate(Builder $builder, $perPage, $page): mixed
     {
-        return $this->performSearch($builder, [
-            'size' => $perPage,
-            'from' => $perPage * ($page - 1),
-        ]);
+        return $this->performSearch($builder, array_filter([
+            '_source' => true,
+            'query' => $this->filters($builder),
+            'size' => $perPage ?: 10,
+            'from' => ($page - 1) * $perPage,
+        ]));
     }
 
     /**
@@ -312,10 +335,15 @@ class OpenSearchEngine extends Engine
      */
     public function createIndex($name, array $options = []): array
     {
+        $body = array_replace_recursive(
+            config('scout.opensearch.indices.default') ?? [],
+            config('scout.opensearch.indices.' . $name) ?? []
+        );
+
         return $this->client->indices()
             ->create([
                 'index' => $name,
-                'body' => $options,
+                'body' => $body,
             ]);
     }
 
@@ -355,5 +383,93 @@ class OpenSearchEngine extends Engine
     public function __call($method, $parameters)
     {
         return $this->client->{$method}(...$parameters);
+    }
+
+    private function getOptions(Builder $builder, array $options): array
+    {
+        if (property_exists($builder, 'distinctField') && filled($builder->distinctField)) {
+            return [
+                'stored_fields' => $builder->distinctField,
+                'aggregations' => [
+                    $builder->distinctField => [
+                        'terms' => [
+                            'field' => $builder->distinctField . '.raw',
+                            'size' => 200,
+                            'min_doc_count' => 1,
+                            'shard_min_doc_count' => 0,
+                            'show_term_doc_count_error' => false,
+                            'order' => [
+                                '_count' => 'desc',
+                                '_key' => 'asc',
+                            ],
+                        ],
+                    ],
+                ],
+            ];
+        }
+
+        return $options;
+    }
+
+    private function filters(Builder $builder): array
+    {
+        $query = [];
+
+        if ($builder->query !== '' && $builder->query !== '0') {
+            /** @phpstan-ignore-line */
+            $fields = $builder->model->searchableFields();
+
+            $query['bool'] = [
+                'must' => [
+                    [
+                        'simple_query_string' => [
+                            'query' => $builder->query,
+                            'fields' => $fields,
+                            'default_operator' => 'and',
+                        ],
+                    ],
+                ],
+            ];
+        }
+
+        if (\count($builder->wheres) > 0) {
+            $wheres = array_merge([
+                '__soft_deleted' => 0,
+            ], $builder->wheres);
+
+            foreach ($wheres as $key => $value) {
+                if (\is_array($value) && isset($value['SCOUT_OPENSEARCH_OP_RANGE'])) {
+                    $range = $value['SCOUT_OPENSEARCH_OP_RANGE'];
+                    $query['bool']['filter'][] = [
+                        'range' => [
+                            $key => $range,
+                        ],
+                    ];
+                } else {
+                    $query['bool']['filter'][] = [
+                        'term' => [
+                            $key => $value,
+                        ],
+                    ];
+                }
+            }
+        }// end if
+        // end if
+
+        if (\count($builder->whereIns) > 0) {
+            $query['bool']['minimum_should_match'] = \count($builder->whereIns);
+            $query['bool']['should'] = [];
+            foreach ($builder->whereIns as $key => $values) {
+                foreach ($values as $value) {
+                    $query['bool']['should'][] = [
+                        'term' => [
+                            $key => $value,
+                        ],
+                    ];
+                }
+            }
+        }
+
+        return $query;
     }
 }
