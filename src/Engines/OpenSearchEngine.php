@@ -417,6 +417,8 @@ class OpenSearchEngine extends Engine
         }
         // end if
 
+        // end if
+
         if (\count($builder->whereIns) > 0) {
             $query['bool']['minimum_should_match'] = \count($builder->whereIns);
             $query['bool']['should'] = [];
