@@ -170,45 +170,6 @@ class OpenSearchEngine extends Engine
             return \call_user_func($builder->callback, $this->client, $builder->query, $options);
         }
 
-        $query = $builder->query;
-        $must = collect([
-            [
-                'query_string' => [
-                    'query' => $query,
-                ],
-            ],
-        ]);
-        $must = $must->merge(collect($builder->wheres)
-            ->map(static fn ($value, $key): array => [
-                'term' => [
-                    $key => $value,
-                ],
-            ])->values())->values();
-
-        if (property_exists($builder, 'whereIns')) {
-            $must = $must->merge(collect($builder->whereIns)->map(static fn ($values, $key): array => [
-                'terms' => [
-                    $key => $values,
-                ],
-            ])->values())->values();
-        }
-
-        $mustNot = collect();
-        if (property_exists($builder, 'whereNotIns')) {
-            $mustNot = $mustNot->merge(collect($builder->whereNotIns)->map(static fn ($values, $key): array => [
-                'terms' => [
-                    $key => $values,
-                ],
-            ])->values())->values();
-        }
-
-        $options['query'] = [
-            'bool' => [
-                'must' => $must->all(),
-                'must_not' => $mustNot->all(),
-            ],
-        ];
-
         $options['sort'] = collect($builder->orders)->map(static fn ($order): array => [
             $order['column'] => [
                 'order' => $order['direction'],
@@ -453,7 +414,7 @@ class OpenSearchEngine extends Engine
                     ];
                 }
             }
-        }// end if
+        }
         // end if
 
         if (\count($builder->whereIns) > 0) {
