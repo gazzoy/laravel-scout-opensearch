@@ -415,6 +415,7 @@ class OpenSearchEngine extends Engine
                 }
             }
         }
+
         // end if
 
         // end if
