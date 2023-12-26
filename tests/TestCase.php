@@ -52,7 +52,7 @@ abstract class TestCase extends BaseTestCase
             ]
         );
         Config::set('scout.driver', 'opensearch');
-        Config::set('scout.opensearch', [
+        Config::set('scout.opensearch.client', [
             'hosts' => ['localhost:9200'],
             'retries' => 2,
             'handler' => ClientBuilder::multiHandler(),
