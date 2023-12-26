@@ -13,7 +13,12 @@ use Zing\LaravelScout\OpenSearch\Engines\OpenSearchEngine;
 
 class OpenSearchServiceProvider extends ServiceProvider
 {
-    protected $wheres = [];
+    /**
+     * where conditions.
+     *
+     * @var array<int|string, mixed>
+     */
+    protected array $wheres = [];
 
     protected ?string $distinctField = null;
 

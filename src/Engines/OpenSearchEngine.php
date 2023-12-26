@@ -346,6 +346,13 @@ class OpenSearchEngine extends Engine
         return $this->client->{$method}(...$parameters);
     }
 
+    /**
+     * Get options.
+     *
+     * @param array<string, mixed> $options
+     *
+     * @return array<string, mixed>
+     */
     private function getOptions(Builder $builder, array $options): array
     {
         if (property_exists($builder, 'distinctField') && filled($builder->distinctField)) {
@@ -372,12 +379,17 @@ class OpenSearchEngine extends Engine
         return $options;
     }
 
+    /**
+     * Filter query.
+     *
+     * @return array<string, mixed>
+     */
     private function filters(Builder $builder): array
     {
         $query = [];
 
         if ($builder->query !== '' && $builder->query !== '0') {
-            /** @phpstan-ignore-line */
+            /** @phpstan-ignore-next-line */
             $fields = $builder->model->searchableFields();
 
             $query['bool'] = [
@@ -393,29 +405,25 @@ class OpenSearchEngine extends Engine
             ];
         }
 
-        if (\count($builder->wheres) > 0) {
-            $wheres = array_merge([
-                '__soft_deleted' => 0,
-            ], $builder->wheres);
-
-            foreach ($wheres as $key => $value) {
-                if (\is_array($value) && isset($value['SCOUT_OPENSEARCH_OP_RANGE'])) {
-                    $range = $value['SCOUT_OPENSEARCH_OP_RANGE'];
-                    $query['bool']['filter'][] = [
-                        'range' => [
-                            $key => $range,
-                        ],
-                    ];
-                } else {
-                    $query['bool']['filter'][] = [
-                        'term' => [
-                            $key => $value,
-                        ],
-                    ];
-                }
+        $wheres = array_merge([
+            '__soft_deleted' => 0,
+        ], $builder->wheres);
+        foreach ($wheres as $key => $value) {
+            if (\is_array($value) && isset($value['SCOUT_OPENSEARCH_OP_RANGE'])) {
+                $range = $value['SCOUT_OPENSEARCH_OP_RANGE'];
+                $query['bool']['filter'][] = [
+                    'range' => [
+                        $key => $range,
+                    ],
+                ];
+            } else {
+                $query['bool']['filter'][] = [
+                    'term' => [
+                        $key => $value,
+                    ],
+                ];
             }
         }
-        // end if
 
         if (\count($builder->whereIns) > 0) {
             $query['bool']['minimum_should_match'] = \count($builder->whereIns);
