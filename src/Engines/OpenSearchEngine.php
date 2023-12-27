@@ -205,6 +205,7 @@ class OpenSearchEngine extends Engine
         $whereBetween = collect();
         if (property_exists($builder, 'whereBetween')) {
             $whereBetween = $whereBetween->merge(
+                // @phpstan-ignore-next-line
                 collect($builder->whereBetween)
                     ->map(static fn ($values, $key): array => [
                         'range' => [

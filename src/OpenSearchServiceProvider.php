@@ -32,7 +32,7 @@ class OpenSearchServiceProvider extends ServiceProvider
 
         Builder::macro('whereBetween', function ($field, array $valueFromTo) {
             if (\count($valueFromTo) !== 2) {
-                throw new \RuntimeException('Unexpected value:' . $valueFromTo);
+                throw new \RuntimeException('Unexpected value:' . implode(', ', $valueFromTo));
             }
 
             $this->whereBetween[$field] = [

@@ -28,7 +28,7 @@ final class OpenSearchEngineTest extends TestCase
 {
     use DatabaseTransactions;
 
-    public $distinctField;
+    public ?string $distinctField = null;
 
     /**
      * @var array<mixed, array<'gte'|'lte', mixed>>
@@ -383,7 +383,7 @@ final class OpenSearchEngineTest extends TestCase
     {
         Builder::macro('whereBetween', function ($field, array $valueFromTo) {
             if (\count($valueFromTo) !== 2) {
-                throw new \RuntimeException('Unexpected value:' . $valueFromTo);
+                throw new \RuntimeException('Unexpected value:' . implode(', ', $valueFromTo));
             }
 
             $this->whereBetween[$field] = [
@@ -490,8 +490,7 @@ final class OpenSearchEngineTest extends TestCase
             $this->distinctField = $field;
 
             // @phpstan-ignore-next-line
-            return $openSearchEngine
-                ->searchAsDistinct($this);
+            return $openSearchEngine->searchAsDistinct($this);
         });
         $builder = new Builder(new SearchableModel(), 'zonda');
         $builder->distinct('foo')
