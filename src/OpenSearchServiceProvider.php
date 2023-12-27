@@ -14,11 +14,9 @@ use Zing\LaravelScout\OpenSearch\Engines\OpenSearchEngine;
 class OpenSearchServiceProvider extends ServiceProvider
 {
     /**
-     * where conditions.
-     *
-     * @var array<int|string, mixed>
+     * @var array<mixed, array<'gte'|'lte', mixed>>
      */
-    protected array $wheres = [];
+    public $whereBetween;
 
     protected ?string $distinctField = null;
 
@@ -32,27 +30,15 @@ class OpenSearchServiceProvider extends ServiceProvider
             ))
         );
 
-        Builder::macro('whereRange', function ($field, string $opRaw, string $value) {
-            $ops = collect([
-                '>=' => 'gte',
-                '<=' => 'lte',
-            ]);
-
-            if (! $ops->has($opRaw)) {
-                throw new \RuntimeException('Unexpected op:' . $opRaw);
+        Builder::macro('whereBetween', function ($field, array $valueFromTo) {
+            if (\count($valueFromTo) !== 2) {
+                throw new \RuntimeException('Unexpected value:' . $valueFromTo);
             }
 
-            $op = $ops->get($opRaw);
-
-            if (! isset($this->wheres[$field])) {
-                $this->wheres[$field] = [
-                    'SCOUT_OPENSEARCH_OP_RANGE' => [],
-                ];
-            }
-
-            if (! isset($this->wheres[$field]['SCOUT_OPENSEARCH_OP_RANGE'][$op])) {
-                $this->wheres[$field]['SCOUT_OPENSEARCH_OP_RANGE'][$op] = $value;
-            }
+            $this->whereBetween[$field] = [
+                'gte' => $valueFromTo[0],
+                'lte' => $valueFromTo[1],
+            ];
 
             return $this;
         });

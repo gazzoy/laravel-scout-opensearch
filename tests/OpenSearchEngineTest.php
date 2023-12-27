@@ -28,6 +28,13 @@ final class OpenSearchEngineTest extends TestCase
 {
     use DatabaseTransactions;
 
+    public $distinctField;
+
+    /**
+     * @var array<mixed, array<'gte'|'lte', mixed>>
+     */
+    public $whereBetween;
+
     protected function setUp(): void
     {
         Config::shouldReceive('get')->with('scout.after_commit', m::any())->andReturn(false);
@@ -369,6 +376,126 @@ final class OpenSearchEngineTest extends TestCase
         $builder->where('foo', 1)
             ->whereIn('bar', [])
             ->orderBy('id', 'desc');
+        $openSearchEngine->search($builder);
+    }
+
+    public function testSearchSendsCorrectParametersToAlgoliaForWhereBetweenSearch(): void
+    {
+        Builder::macro('whereBetween', function ($field, array $valueFromTo) {
+            if (\count($valueFromTo) !== 2) {
+                throw new \RuntimeException('Unexpected value:' . $valueFromTo);
+            }
+
+            $this->whereBetween[$field] = [
+                'gte' => $valueFromTo[0],
+                'lte' => $valueFromTo[1],
+            ];
+
+            return $this;
+        });
+
+        $client = m::mock(Client::class);
+        $client->shouldReceive('search')
+            ->once()
+            ->with([
+                'index' => 'table',
+                'body' => [
+                    'query' => [
+                        'bool' => [
+                            'must' => [
+                                [
+                                    'query_string' => [
+                                        'query' => 'zonda',
+                                    ],
+                                ],
+                                [
+                                    'term' => [
+                                        'foo' => 1,
+                                    ],
+                                ],
+                            ],
+                            'must_not' => [],
+                            'filter' => [
+                                [
+                                    'range' => [
+                                        'bar' => [
+                                            'gte' => 1,
+                                            'lte' => 2,
+                                        ],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                    'sort' => [
+                        [
+                            'id' => [
+                                'order' => 'desc',
+                            ],
+                        ],
+                    ],
+                ],
+            ]);
+
+        $openSearchEngine = new OpenSearchEngine($client);
+        $builder = new Builder(new SearchableModel(), 'zonda');
+        $builder->where('foo', 1)
+            ->whereBetween('bar', [1, 2])
+            ->orderBy('id', 'desc');
+        $openSearchEngine->search($builder);
+    }
+
+    public function testSearchSendsCorrectParametersToAlgoliaForDistinctSearch(): void
+    {
+        $client = m::mock(Client::class);
+        $client->shouldReceive('search')
+            ->times(2)
+            ->with([
+                'index' => 'table',
+                'body' => [
+                    'query' => [
+                        'bool' => [
+                            'must' => [
+                                [
+                                    'query_string' => [
+                                        'query' => 'zonda',
+                                    ],
+                                ],
+                            ],
+                            'must_not' => [],
+                        ],
+                    ],
+                    'stored_fields' => 'foo',
+                    'aggregations' => [
+                        'foo' => [
+                            'terms' => [
+                                'field' => 'foo.raw',
+                                'size' => 200,
+                                'min_doc_count' => 1,
+                                'shard_min_doc_count' => 0,
+                                'show_term_doc_count_error' => false,
+                                'order' => [
+                                    '_count' => 'desc',
+                                    '_key' => 'asc',
+                                ],
+                            ],
+                        ],
+                    ],
+                    'sort' => [],
+                ],
+            ]);
+        $openSearchEngine = new OpenSearchEngine($client);
+
+        Builder::macro('distinct', function ($field) use ($openSearchEngine): \Illuminate\Support\Collection {
+            $this->distinctField = $field;
+
+            // @phpstan-ignore-next-line
+            return $openSearchEngine
+                ->searchAsDistinct($this);
+        });
+        $builder = new Builder(new SearchableModel(), 'zonda');
+        $builder->distinct('foo')
+            ->count();
         $openSearchEngine->search($builder);
     }
 

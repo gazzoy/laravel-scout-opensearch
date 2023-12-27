@@ -113,14 +113,9 @@ class OpenSearchEngine extends Engine
      */
     public function search(Builder $builder): mixed
     {
-        $options = $this->getOptions($builder, [
-            '_source' => true,
-            'size' => $builder->limit ?: 10000,
-            'from' => 0,
-        ]);
-        $options['query'] = $this->filters($builder);
-
-        return $this->performSearch($builder, $options);
+        return $this->performSearch($builder, array_filter([
+            'size' => $builder->limit,
+        ]));
     }
 
     public function searchAsDistinct(Builder $builder): Collection
@@ -146,12 +141,10 @@ class OpenSearchEngine extends Engine
      */
     public function paginate(Builder $builder, $perPage, $page): mixed
     {
-        return $this->performSearch($builder, array_filter([
-            '_source' => true,
-            'query' => $this->filters($builder),
-            'size' => $perPage ?: 10,
-            'from' => ($page - 1) * $perPage,
-        ]));
+        return $this->performSearch($builder, [
+            'size' => $perPage,
+            'from' => $perPage * ($page - 1),
+        ]);
     }
 
     /**
@@ -170,11 +163,86 @@ class OpenSearchEngine extends Engine
             return \call_user_func($builder->callback, $this->client, $builder->query, $options);
         }
 
+        $query = $builder->query;
+        $must = collect([
+            [
+                'query_string' => [
+                    'query' => $query,
+                ],
+            ],
+        ]);
+        $must = $must->merge(collect($builder->wheres)
+            ->map(static fn ($value, $key): array => [
+                'term' => [
+                    $key => $value,
+                ],
+            ])->values())->values();
+
+        if (property_exists($builder, 'whereIns')) {
+            $must = $must->merge(collect($builder->whereIns)->map(static fn ($values, $key): array => [
+                'terms' => [
+                    $key => $values,
+                ],
+            ])->values())->values();
+        }
+
+        $mustNot = collect();
+        if (property_exists($builder, 'whereNotIns')) {
+            $mustNot = $mustNot->merge(collect($builder->whereNotIns)->map(static fn ($values, $key): array => [
+                'terms' => [
+                    $key => $values,
+                ],
+            ])->values())->values();
+        }
+
+        $options['query'] = [
+            'bool' => [
+                'must' => $must->all(),
+                'must_not' => $mustNot->all(),
+            ],
+        ];
+
+        $whereBetween = collect();
+        if (property_exists($builder, 'whereBetween')) {
+            $whereBetween = $whereBetween->merge(
+                collect($builder->whereBetween)
+                    ->map(static fn ($values, $key): array => [
+                        'range' => [
+                            $key => $values,
+                        ],
+                    ])->values()
+            )->values();
+
+            if ($whereBetween->isNotEmpty()) {
+                $options['query']['bool']['filter'] = $whereBetween->all();
+            }
+        }
+
+        if (property_exists($builder, 'distinctField') && filled($builder->distinctField)) {
+            $options['stored_fields'] = $builder->distinctField;
+            $options['aggregations'] = [
+                $builder->distinctField => [
+                    'terms' => [
+                        'field' => $builder->distinctField . '.raw',
+                        'size' => 200,
+                        'min_doc_count' => 1,
+                        'shard_min_doc_count' => 0,
+                        'show_term_doc_count_error' => false,
+                        'order' => [
+                            '_count' => 'desc',
+                            '_key' => 'asc',
+                        ],
+                    ],
+                ],
+            ];
+        }
+
         $options['sort'] = collect($builder->orders)->map(static fn ($order): array => [
             $order['column'] => [
                 'order' => $order['direction'],
             ],
         ])->all();
+
         $result = $this->client->search([
             'index' => $index,
             'body' => $options,
@@ -344,101 +412,5 @@ class OpenSearchEngine extends Engine
     public function __call($method, $parameters)
     {
         return $this->client->{$method}(...$parameters);
-    }
-
-    /**
-     * Get options.
-     *
-     * @param array<string, mixed> $options
-     *
-     * @return array<string, mixed>
-     */
-    private function getOptions(Builder $builder, array $options): array
-    {
-        if (property_exists($builder, 'distinctField') && filled($builder->distinctField)) {
-            return [
-                'stored_fields' => $builder->distinctField,
-                'aggregations' => [
-                    $builder->distinctField => [
-                        'terms' => [
-                            'field' => $builder->distinctField . '.raw',
-                            'size' => 200,
-                            'min_doc_count' => 1,
-                            'shard_min_doc_count' => 0,
-                            'show_term_doc_count_error' => false,
-                            'order' => [
-                                '_count' => 'desc',
-                                '_key' => 'asc',
-                            ],
-                        ],
-                    ],
-                ],
-            ];
-        }
-
-        return $options;
-    }
-
-    /**
-     * Filter query.
-     *
-     * @return array<string, mixed>
-     */
-    private function filters(Builder $builder): array
-    {
-        $query = [];
-
-        if ($builder->query !== '' && $builder->query !== '0') {
-            /** @phpstan-ignore-next-line */
-            $fields = $builder->model->searchableFields();
-
-            $query['bool'] = [
-                'must' => [
-                    [
-                        'simple_query_string' => [
-                            'query' => $builder->query,
-                            'fields' => $fields,
-                            'default_operator' => 'and',
-                        ],
-                    ],
-                ],
-            ];
-        }
-
-        $wheres = array_merge([
-            '__soft_deleted' => 0,
-        ], $builder->wheres);
-        foreach ($wheres as $key => $value) {
-            if (\is_array($value) && isset($value['SCOUT_OPENSEARCH_OP_RANGE'])) {
-                $range = $value['SCOUT_OPENSEARCH_OP_RANGE'];
-                $query['bool']['filter'][] = [
-                    'range' => [
-                        $key => $range,
-                    ],
-                ];
-            } else {
-                $query['bool']['filter'][] = [
-                    'term' => [
-                        $key => $value,
-                    ],
-                ];
-            }
-        }
-
-        if (\count($builder->whereIns) > 0) {
-            $query['bool']['minimum_should_match'] = \count($builder->whereIns);
-            $query['bool']['should'] = [];
-            foreach ($builder->whereIns as $key => $values) {
-                foreach ($values as $value) {
-                    $query['bool']['should'][] = [
-                        'term' => [
-                            $key => $value,
-                        ],
-                    ];
-                }
-            }
-        }
-
-        return $query;
     }
 }
