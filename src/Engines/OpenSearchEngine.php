@@ -6,7 +6,6 @@ namespace Zing\LaravelScout\OpenSearch\Engines;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\LazyCollection;
 use Laravel\Scout\Builder;
@@ -116,21 +115,6 @@ class OpenSearchEngine extends Engine
         return $this->performSearch($builder, array_filter([
             'size' => $builder->limit,
         ]));
-    }
-
-    public function searchAsDistinct(Builder $builder): Collection
-    {
-        $results = $this->search($builder);
-
-        // @phpstan-ignore-next-line
-        if (Arr::has($results, sprintf('aggregations.%s.buckets', $builder->distinctField))) {
-            // @phpstan-ignore-next-line
-            return collect(Arr::get($results, sprintf('aggregations.%s.buckets', $builder->distinctField)))->pluck(
-                'key'
-            );
-        }
-
-        return collect();
     }
 
     /**

@@ -7,6 +7,7 @@ namespace Zing\LaravelScout\OpenSearch\Tests;
 use Illuminate\Container\Container;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\LazyCollection;
 use Laravel\Scout\Builder;
@@ -489,8 +490,18 @@ final class OpenSearchEngineTest extends TestCase
         Builder::macro('distinct', function ($field) use ($openSearchEngine): \Illuminate\Support\Collection {
             $this->distinctField = $field;
 
+            /** @phpstan-ignore-next-line */
+            $results = $openSearchEngine->search($this);
+
             // @phpstan-ignore-next-line
-            return $openSearchEngine->searchAsDistinct($this);
+            if (Arr::has($results, sprintf('aggregations.%s.buckets', $this->distinctField))) {
+                // @phpstan-ignore-next-line
+                return collect(Arr::get($results, sprintf('aggregations.%s.buckets', $this->distinctField)))->pluck(
+                    'key'
+                );
+            }
+
+            return collect();
         });
         $builder = new Builder(new SearchableModel(), 'zonda');
         $builder->distinct('foo')

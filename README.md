@@ -113,6 +113,16 @@ return [
 ];
 ```
 
+### Test
+
+```shell
+$ composer update
+$ composer check-platform-reqs
+$ docker run -d -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" -e "plugins.security.disabled=true" opensearchproject/opensearch:latest
+$ composer fix
+$ ./vendor/bin/phpunit
+```
+
 ## License
 
 Laravel Scout OpenSearch is an open-sourced software licensed under the [MIT license](LICENSE).

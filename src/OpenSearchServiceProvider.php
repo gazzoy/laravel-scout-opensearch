@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Zing\LaravelScout\OpenSearch;
 
+use Illuminate\Support\Arr;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Scout\Builder;
 use Laravel\Scout\EngineManager;
@@ -46,9 +47,19 @@ class OpenSearchServiceProvider extends ServiceProvider
         Builder::macro('distinct', function ($field) {
             $this->distinctField = $field;
 
+            /** @phpstan-ignore-next-line */
+            $results = $this->engine()
+                ->search($this);
+
             // @phpstan-ignore-next-line
-            return $this->engine()
-                ->searchAsDistinct($this);
+            if (Arr::has($results, sprintf('aggregations.%s.buckets', $this->distinctField))) {
+                // @phpstan-ignore-next-line
+                return collect(Arr::get($results, sprintf('aggregations.%s.buckets', $this->distinctField)))->pluck(
+                    'key'
+                );
+            }
+
+            return collect();
         });
 
         Builder::macro(
