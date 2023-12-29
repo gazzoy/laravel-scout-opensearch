@@ -79,6 +79,7 @@ class OpenSearchServiceProvider extends ServiceProvider
             Client::class,
             static fn ($app): Client => ClientBuilder::fromConfig(
                 $app->isLocal() || $app->runningUnitTests()
+                    // @phpstan-ignore-next-line
                     ? collect($app['config']->get('scout.opensearch.client'))->except([
                         'sigV4Region',
                         'sigV4Service',
