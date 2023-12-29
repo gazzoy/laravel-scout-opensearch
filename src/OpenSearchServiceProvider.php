@@ -77,7 +77,15 @@ class OpenSearchServiceProvider extends ServiceProvider
     {
         $this->app->singleton(
             Client::class,
-            static fn ($app): Client => ClientBuilder::fromConfig($app['config']->get('scout.opensearch.client'))
+            static fn ($app): Client => ClientBuilder::fromConfig(
+                $app->isLocal() || $app->runningUnitTests()
+                    ? collect($app['config']->get('scout.opensearch.client'))->except([
+                        'sigV4Region',
+                        'sigV4Service',
+                        'sigV4CredentialProvider',
+                    ])->all()
+                    : $app['config']->get('scout.opensearch.client')
+            )
         );
     }
 }
