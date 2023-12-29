@@ -51,7 +51,6 @@ class OpenSearchServiceProvider extends ServiceProvider
             $results = $this->engine()
                 ->search($this);
 
-            // @phpstan-ignore-next-line
             if (Arr::has($results, sprintf('aggregations.%s.buckets', $this->distinctField))) {
                 // @phpstan-ignore-next-line
                 return collect(Arr::get($results, sprintf('aggregations.%s.buckets', $this->distinctField)))->pluck(
