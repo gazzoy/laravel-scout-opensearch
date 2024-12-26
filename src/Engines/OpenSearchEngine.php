@@ -30,7 +30,7 @@ class OpenSearchEngine extends Engine
     /**
      * Update the given model in the index.
      *
-     * @param \Illuminate\Database\Eloquent\Collection $models
+     * @param \Illuminate\Database\Eloquent\Collection<int, covariant \Illuminate\Database\Eloquent\Model> $models
      */
     public function update($models): void
     {
@@ -44,16 +44,17 @@ class OpenSearchEngine extends Engine
             $models->each->pushSoftDeleteMetadata();
         }
 
-        $objects = $models->map(static function ($model): ?array {
+        $objects = $models->map(static function ($model): array {
             $searchableData = $model->toSearchableArray();
             if (empty($searchableData)) {
-                return null;
+                return [];
             }
 
             return array_merge($searchableData, $model->scoutMetadata(), [
                 $model->getScoutKeyName() => $model->getScoutKey(),
             ]);
-        })->filter()
+        })
+            ->filter()
             ->values()
             ->all();
 
@@ -79,7 +80,7 @@ class OpenSearchEngine extends Engine
     /**
      * Remove the given model from the index.
      *
-     * @param \Illuminate\Database\Eloquent\Collection $models
+     * @param \Illuminate\Database\Eloquent\Collection<int, covariant \Illuminate\Database\Eloquent\Model> $models
      */
     public function delete($models): void
     {
@@ -109,6 +110,8 @@ class OpenSearchEngine extends Engine
 
     /**
      * Perform the given search on the engine.
+     *
+     * @param \Laravel\Scout\Builder<covariant \Illuminate\Database\Eloquent\Model> $builder
      */
     public function search(Builder $builder): mixed
     {
@@ -122,6 +125,7 @@ class OpenSearchEngine extends Engine
      *
      * @param int $perPage
      * @param int $page
+     * @param \Laravel\Scout\Builder<covariant \Illuminate\Database\Eloquent\Model> $builder
      */
     public function paginate(Builder $builder, $perPage, $page): mixed
     {
@@ -135,6 +139,7 @@ class OpenSearchEngine extends Engine
      * Perform the given search on the engine.
      *
      * @param array<string, mixed> $options
+     * @param \Laravel\Scout\Builder<covariant \Illuminate\Database\Eloquent\Model> $builder
      */
     protected function performSearch(Builder $builder, array $options = []): mixed
     {
@@ -148,6 +153,8 @@ class OpenSearchEngine extends Engine
         }
 
         $query = $builder->query;
+
+        /** @var \Illuminate\Support\Collection<int, array{query_string?: array{query: string, term?: array<string, mixed>}}> $must */
         $must = collect([
             [
                 'query_string' => [
@@ -240,6 +247,8 @@ class OpenSearchEngine extends Engine
      * Pluck and return the primary keys of the given results.
      *
      * @param array{hits: mixed[]|null}|null $results
+     *
+     * @return \Illuminate\Support\Collection<int, int|string>
      */
     public function mapIds($results): Collection
     {
@@ -255,8 +264,9 @@ class OpenSearchEngine extends Engine
      *
      * @param array{hits: mixed[]|null}|null $results
      * @param \Illuminate\Database\Eloquent\Model $model
+     * @param \Laravel\Scout\Builder<covariant \Illuminate\Database\Eloquent\Model> $builder
      *
-     * @return \Illuminate\Database\Eloquent\Collection
+     * @return \Illuminate\Database\Eloquent\Collection<int, \Illuminate\Database\Eloquent\Model>
      */
     public function map(Builder $builder, $results, $model): mixed
     {
@@ -286,6 +296,9 @@ class OpenSearchEngine extends Engine
      *
      * @param array{hits: mixed[]|null}|null $results
      * @param \Illuminate\Database\Eloquent\Model $model
+     * @param \Laravel\Scout\Builder<covariant \Illuminate\Database\Eloquent\Model> $builder
+     *
+     * @return \Illuminate\Support\LazyCollection<int, \Illuminate\Database\Eloquent\Model>
      */
     public function lazyMap(Builder $builder, $results, $model): LazyCollection
     {

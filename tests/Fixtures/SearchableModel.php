@@ -11,11 +11,6 @@ class SearchableModel extends Model
 {
     use Searchable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<string>
-     */
     protected $fillable = ['id'];
 
     public function searchableAs(): string
@@ -26,7 +21,7 @@ class SearchableModel extends Model
     /**
      * @return array<string, mixed>
      */
-    public function scoutMetadata()
+    public function scoutMetadata(): array
     {
         return [];
     }
