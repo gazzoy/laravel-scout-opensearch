@@ -1,5 +1,5 @@
 includes:
-    - vendor/nunomaduro/larastan/extension.neon
+    - vendor/larastan/larastan/extension.neon
     - vendor/phpstan/phpstan-mockery/extension.neon
 
 parameters:
@@ -8,6 +8,7 @@ parameters:
         - src
         - tests
     ignoreErrors:
+        - identifier: function.alreadyNarrowedType
         - '#Call to an undefined method Illuminate\\Database\\Eloquent\\Model::getScoutKey\(\).#'
         - '#Call to an undefined method Illuminate\\Database\\Eloquent\\Model::getScoutKeyName\(\).#'
         - '#Call to an undefined method Illuminate\\Database\\Eloquent\\Model::getScoutModelsByIds\(\).#'
