@@ -232,6 +232,22 @@ class OpenSearchEngine extends Engine
             ];
         }
 
+        if (property_exists($builder, 'withinLocation') && filled($builder->withinLocation)) {
+            if (! isset($options['query']['bool']['filter'])) {
+                $options['query']['bool']['filter'] = [];
+            }
+
+            foreach ($builder->withinLocation as $key => $values) {
+                $options['query']['bool']['filter']['geo_distance'] = [
+                    'distance' => $values['distance'],
+                    $key => [
+                        'lat' => $values['lat'],
+                        'lon' => $values['lon'],
+                    ],
+                ];
+            }
+        }
+
         $options['sort'] = collect($builder->orders)->map(static fn ($order): array => [
             $order['column'] => [
                 'order' => $order['direction'],

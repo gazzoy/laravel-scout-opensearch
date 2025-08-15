@@ -31,7 +31,7 @@ class OpenSearchServiceProvider extends ServiceProvider
             ))
         );
 
-        Builder::macro('whereBetween', function ($field, array $valueFromTo) {
+        Builder::macro('whereBetween', function ($field, array $valueFromTo): object {
             if (\count($valueFromTo) !== 2) {
                 throw new \RuntimeException('Unexpected value:' . implode(', ', $valueFromTo));
             }
@@ -51,14 +51,28 @@ class OpenSearchServiceProvider extends ServiceProvider
             $results = $this->engine()
                 ->search($this);
 
-            if (Arr::has($results, sprintf('aggregations.%s.buckets', $this->distinctField))) {
+            if (Arr::has($results, \sprintf('aggregations.%s.buckets', $this->distinctField))) {
                 // @phpstan-ignore-next-line
-                return collect(Arr::get($results, sprintf('aggregations.%s.buckets', $this->distinctField)))->pluck(
+                return collect(Arr::get($results, \sprintf('aggregations.%s.buckets', $this->distinctField)))->pluck(
                     'key'
                 );
             }
 
             return collect();
+        });
+
+        Builder::macro('withinLocation', function ($field, array $values): object {
+            if (\count($values) !== 3) {
+                throw new \RuntimeException('Unexpected value:' . implode(', ', $values));
+            }
+
+            $this->withinLocation[$field] = [
+                'distance' => $values['distance'],
+                'lat' => $values['lat'],
+                'lon' => $values['lon'],
+            ];
+
+            return $this;
         });
 
         Builder::macro(

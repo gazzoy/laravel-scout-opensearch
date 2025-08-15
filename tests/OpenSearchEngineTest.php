@@ -40,6 +40,20 @@ final class OpenSearchEngineTest extends TestCase
     {
         Config::shouldReceive('get')->with('scout.after_commit', m::any())->andReturn(false);
         Config::shouldReceive('get')->with('scout.soft_delete', m::any())->andReturn(false);
+
+        Builder::macro('withinLocation', function ($field, array $values): object {
+            if (\count($values) !== 3) {
+                throw new \RuntimeException('Unexpected value:' . implode(', ', $values));
+            }
+
+            $this->withinLocation[$field] = [
+                'distance' => $values['distance'],
+                'lat' => $values['lat'],
+                'lon' => $values['lon'],
+            ];
+
+            return $this;
+        });
     }
 
     public function testUpdateAddsObjectsToIndex(): void
@@ -382,7 +396,7 @@ final class OpenSearchEngineTest extends TestCase
 
     public function testSearchSendsCorrectParametersToAlgoliaForWhereBetweenSearch(): void
     {
-        Builder::macro('whereBetween', function ($field, array $valueFromTo) {
+        Builder::macro('whereBetween', function ($field, array $valueFromTo): object {
             if (\count($valueFromTo) !== 2) {
                 throw new \RuntimeException('Unexpected value:' . implode(', ', $valueFromTo));
             }
@@ -493,9 +507,9 @@ final class OpenSearchEngineTest extends TestCase
             /** @phpstan-ignore-next-line */
             $results = $openSearchEngine->search($this);
 
-            if (Arr::has($results, sprintf('aggregations.%s.buckets', $this->distinctField))) {
+            if (Arr::has($results, \sprintf('aggregations.%s.buckets', $this->distinctField))) {
                 // @phpstan-ignore-next-line
-                return collect(Arr::get($results, sprintf('aggregations.%s.buckets', $this->distinctField)))->pluck(
+                return collect(Arr::get($results, \sprintf('aggregations.%s.buckets', $this->distinctField)))->pluck(
                     'key'
                 );
             }
@@ -505,6 +519,61 @@ final class OpenSearchEngineTest extends TestCase
         $builder = new Builder(new SearchableModel(), 'zonda');
         $builder->distinct('foo')
             ->count();
+        $openSearchEngine->search($builder);
+    }
+
+    public function testSearchSendsCorrectParametersToAlgoliaForWithinLocationSearch(): void
+    {
+        $client = m::mock(Client::class);
+        $client->shouldReceive('search')
+            ->once()
+            ->with([
+                'index' => 'table',
+                'body' => [
+                    'query' => [
+                        'bool' => [
+                            'must' => [
+                                [
+                                    'query_string' => [
+                                        'query' => 'zonda',
+                                    ],
+                                ],
+                                [
+                                    'term' => [
+                                        'foo' => 1,
+                                    ],
+                                ],
+                            ],
+                            'must_not' => [],
+                            'filter' => [
+                                'geo_distance' => [
+                                    'distance' => '50mi',
+                                    'point' => [
+                                        'lat' => 34.123,
+                                        'lon' => 143.5678,
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                    'sort' => [
+                        [
+                            'id' => [
+                                'order' => 'desc',
+                            ],
+                        ],
+                    ],
+                ],
+            ]);
+        $openSearchEngine = new OpenSearchEngine($client);
+        $builder = new Builder(new SearchableModel(), 'zonda');
+        $builder->where('foo', 1)
+            ->withinLocation('point', [
+                'distance' => '50mi',
+                'lat' => 34.123,
+                'lon' => 143.5678,
+            ])
+            ->orderBy('id', 'desc');
         $openSearchEngine->search($builder);
     }
 
